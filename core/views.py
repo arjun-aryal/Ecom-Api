@@ -81,7 +81,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'email': self.user.email,
             'role': self.user.role
         }
-        i
+        
 
 class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer

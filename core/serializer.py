@@ -40,6 +40,8 @@ class SellerSignupSerializer(serializers.ModelSerializer):
         if SellerProfile.objects.filter(shop_name=shop_name).exists():
             raise serializers.ValidationError(f" {shop_name} is already taken.")
         return attrs
+    
+    @transaction.atomic
     def create(self, validated_data):
         shop_name = validated_data.pop('shop_name')
         contact_num = validated_data.pop('contact_num', '') 
