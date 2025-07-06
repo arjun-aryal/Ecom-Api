@@ -5,19 +5,19 @@ from .pagination import StandardResultsSetPagination
 from .serializer import OrderCreateSerializer, OrderDetailSerializer, ProductSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
-
+from core.permission import IsCustomer, IsAdminOrCustomer
 
 
 class OrderCreateView(generics.CreateAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderCreateSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,IsCustomer,IsAdminOrCustomer]
 
 
 
 class CustomerOrderListView(generics.ListAPIView):
     serializer_class = OrderDetailSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,IsAdminOrCustomer]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['status', 'is_paid']

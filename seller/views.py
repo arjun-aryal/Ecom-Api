@@ -7,6 +7,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.views import APIView
 from rest_framework import generics, status
 from rest_framework.response import Response
+from core.permission import IsAdmin, IsSeller, IsProductOwnerOrAdmin, IsAdminOrSeller, IsAdminCustomerOrSellerForOrder, IsAdminOrSellerForOrderStatus
 
 
 class ProductListCreateView(generics.ListCreateAPIView):
@@ -30,12 +31,12 @@ class ProductListCreateView(generics.ListCreateAPIView):
 class ProductUpdateView(generics.UpdateAPIView):
     queryset = Product.objects.select_related('seller', 'category')
     serializer_class = ProductCreateUpdateSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,IsAdminOrSeller]
     lookup_url_kwarg = "pk"
 
 class ProductDeleteView(generics.DestroyAPIView):
     queryset = Product.objects.select_related('seller', 'category')
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,IsAdminOrSeller]
     lookup_url_kwarg = 'pk'
 
     def destroy(self, request, *args, **kwargs):
@@ -52,7 +53,7 @@ class ProductDetailView(generics.RetrieveAPIView):
 
 class SellerInventoryView(generics.ListAPIView):
     serializer_class= ProductListSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrSeller]
     pagination_class = StandardResultsSetPagination
     filter_backends = DjangoFilterBackend
     filterset_fields =  ["category"]
@@ -80,7 +81,7 @@ class SellerInventoryView(generics.ListAPIView):
 
 class SellerOrderListView(generics.ListAPIView):
     serializer_class = SellerOrderDetailSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrSeller]
     pagination_class = StandardResultsSetPagination
     filter_backends = DjangoFilterBackend
     filterset_fields = ['status','is_paid']
@@ -105,8 +106,27 @@ class SellerOrderListView(generics.ListAPIView):
         context['seller'] = self.request.user if self.request.user.role == 'seller' else None
         return context
 
+class SellerOrderDetailView(generics.RetrieveAPIView):
+    serializer_class = SellerOrderDetailSerializer
+    permission_classes = [IsAuthenticated, IsAdminCustomerOrSellerForOrder]
+    lookup_url_kwarg = 'pk'
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'admin':
+            return Order.objects.select_related('customer').prefetch_related('items__product__category')
+        elif user.role == 'seller':
+            return Order.objects.filter(items__product__seller=user).select_related('customer').prefetch_related('items__product__category')
+        return Order.objects.none()
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['seller'] = self.request.user if self.request.user.role == 'seller' else None
+        return context
+
+
 class OrderStatusUpdateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrSellerForOrderStatus]
 
     def patch(self,request,pk):
         try:
@@ -120,7 +140,7 @@ class OrderStatusUpdateView(APIView):
 
 class SalesHistoryView(generics.ListAPIView):
     serializer_class = SalesHistorySerializer
-    permission_classes = [IsAuthenticated, IsAdminOrSeller]
+    permission_classes = [IsAdminOrSeller]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend]
 
